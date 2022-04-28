@@ -1,119 +1,144 @@
 import math
 from matplotlib import pyplot as plt
+from kruskal import Kruskal
 
 class Graph():
 
     def __init__(self, nodes, capacity) -> None:
         """ 
         initializes a graph object
-        depot is the first node -> 0
+        - depot is the first node (0)
         """
-        self.graph = {}
         self.capacity = capacity
-        # add nodes to graph
-        for key, value in dict(nodes).items():
-            node_type = 'D' if key == '1' else 'L' if int(value['demand']) >= 0 else 'B'
-            key = int(key) - 1
-            self.graph[key] = {
-                'demand': abs(int(value['demand'])),
-                'coordinates': value['coordinates'],
-                'type': node_type
-            }
+        self.nodes = dict(nodes)
+        #self.edges = self.get_edges()
 
 
-    def get_depot(self) -> dict:
+    def get_edges(self):
         """
-        returns the depot node
+        Get edges of the graph
         """
-        depot = {}
-        for value in self.graph.values():
-            if value['type'] == 'D':
-                depot = value
-                break
-        return depot
+        linehauls = self.linehaul_nodes()
+        backhauls = self.backhaul_nodes()
+        edges_linehaul = self.nodes_edges(linehauls)
+        edges_backhaul = self.nodes_edges(backhauls)
+        return edges_linehaul + edges_backhaul
 
 
-    def get_linehauls(self) -> list:
+    def nodes_edges(self, nodes):
         """
-        returns a list of linehaul nodes
+        Get edges of the nodes
         """
-        linehauls = []
-        for value in self.graph.values():
-            if value['type'] == 'L':
-                linehauls.append(value)
-        return linehauls
+        edges = []
+        for x in nodes.keys():
+            for y in nodes.keys():
+                if x > y:
+                    distance = self.euclidean_distance(x, y)
+                    edges.append([x, y, distance])
+        return edges
 
 
-    def get_backhauls(self) -> list:
+    def type_nodes(self, type_node):
         """
-        returns a list of backhaul nodes
+        Get nodes of a specific type
         """
-        backhauls = []
-        for value in self.graph.values():
-            if value['type'] == 'B':
-                backhauls.append(value)
-        return backhauls
+        nodes = {}
+        for key, value in dict(self.nodes).items():
+            if value['type_node'] == type_node:
+                nodes[key] = value
+        return nodes
+    
+
+    def nodes_route(self, route) -> list:
+        """
+        Return nodes from route
+        """
+        nodes = {}
+        for key in route:
+            nodes[key] = self.nodes[key]
+        return nodes
 
 
-    def get_distance(self, node1, node2) -> int:
+    def linehaul_nodes(self):
         """
-        returns the distance between two nodes
+        Get linehaul nodes
+        """
+        return self.type_nodes('L')
+    
+
+    def backhaul_nodes(self):
+        """
+        Get backhaul nodes
+        """
+        return self.type_nodes('B')
+
+
+    def euclidean_distance(self, x, y) -> float:
+        """
+        returns the euclidean distance between two nodes
         """
         # get coordinates
-        x1, y1 = self.graph[node1]['coordinates']
-        x2, y2 = self.graph[node2]['coordinates']
+        x1, y1 = self.nodes[x]['coordinates']
+        x2, y2 = self.nodes[y]['coordinates']
         # calculate distance
-        distance = math.sqrt((int(x2) - int(x1))**2 + (int(y2) - int(y1))**2)
-        return distance #round(distance)
+        return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
 
-    def get_distance_route(self, route) -> int:
+    def route_distance(self, route) -> float:
         """
         returns the distance of a route
         """
         distance = 0
         for i in range(len(route) - 1):
-            distance += self.get_distance(route[i], route[i+1])
+            distance += self.euclidean_distance(route[i], route[i+1])
         return distance
 
 
-    def polar_coordinates(self, final_node, initial_node = 0) -> tuple:
+    def route_demand(self, route) -> int:
         """
-        returns the distance and angle between depot and selected node with demand and type of node
+        returns the demand of a route
+        """
+        demand = 0
+        for i in range(1, len(route)):
+            demand += self.nodes[route[i]]['demand']
+        return demand
+
+
+    def polar_coordinates(self, node, initial_node = 0) -> tuple:
+        """
+        returns the distance and angle between depot or initial_node and selected node
         """
         # get coordinates
-        x1, y1 = self.graph[initial_node]['coordinates'] # Depot
-        x2, y2 = self.graph[final_node]['coordinates'] # Selected node
-        # get demand and type of node
-        demand = self.graph[final_node]['demand']
-        node_type = self.graph[final_node]['type']
+        x1, y1 = self.nodes[initial_node]['coordinates'] # Depot
+        x2, y2 = self.nodes[node]['coordinates'] # Selected node
         # calculate distance and angle
-        distance = math.sqrt((int(x2) - int(x1))**2 + (int(y2) - int(y1))**2)
-        angle = math.degrees(math.atan2(int(y2) - int(y1), int(x2) - int(x1)))
+        distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+        angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
         angle = angle if angle >= 0 else 360 + angle
-        return (distance, angle, demand, node_type)
+        return (distance, angle)
 
 
-    def calculate_graph(self) -> tuple:
+    def plot_lists(self) -> tuple:
         """
-        Calculate lists of x and y coordinates, colors, and node names
+        Return the lists of coordinates, names and colors to plot
         """
         x, y, n, c = [], [], [], []
-        for key, value in self.graph.items():
+        for key, value in dict(self.nodes).items():
             x.append(int(value['coordinates'][0]))
             y.append(int(value['coordinates'][1]))
             n.append(key)
-            c.append('c' if value['type'] == 'L' else 'r' if value['type'] == 'B' else 'g')
+            c.append('c' if value['type_node'] == 'L' else 'r' if value['type_node'] == 'B' else 'g')
         return (x, y, n, c)
 
 
-    def plot_graph(self, routes=[[1,2,3]]) -> None:
+    def plot_graph(self, routes) -> None:
         """
-        plots the graph without solution
+        plots the graph with the routes
         """
-        x, y, n, c = self.calculate_graph()
-        fig, ax = plt.subplots()
-        ax.scatter(x, y, marker='o', c=c, edgecolor='b') # plot nodes
+        x, y, n, c = self.plot_lists()
+        _, ax = plt.subplots()
+        # plot nodes
+        ax.scatter(x, y, marker='o', c=c, edgecolor='b')
         # plot annotations
         for i, txt in enumerate(n):
             ax.annotate(txt, (x[i], y[i]))
@@ -122,55 +147,80 @@ class Graph():
             for route in routes:
                 x_route, y_route = [], []
                 for item in route:
-                    x_route.append(int(self.graph[item]['coordinates'][0]))
-                    y_route.append(int(self.graph[item]['coordinates'][1]))
+                    x_route.append(self.nodes[item]['coordinates'][0])
+                    y_route.append(self.nodes[item]['coordinates'][1])
                 plt.plot(x_route, y_route, 'b')
-        plt.show() # print the plot
+        plt.show()
 
-    # Initial solution
+
     def initial_solution(self):
         """
         Initial solution with a greedy algorithm
         """
-        linehauls, backhauls = [], []
-        # Get linehauls and backhauls in polar coordinates
-        for i in range(1, len(self.graph)):
-            distance, angle, demand, type = self.polar_coordinates(i)
-            if type == 'L':
-                linehauls.append([i, distance, angle, demand])
-            elif type == 'B':
-                backhauls.append([i, distance, angle, demand])
-        # Order linehauls and backhauls by angle
-        sorted_linehauls = sorted(linehauls, key=lambda x: x[2])
-        sorted_backhauls = sorted(backhauls, key=lambda x: x[2])
-        # Iterate through linehauls and backhauls to create routes
-        linehauls_roures = self.create_routes(sorted_linehauls)
-        backhauls_routes = self.create_routes(sorted_backhauls)
-        # Merge routes
-        routes = linehauls_roures + backhauls_routes
-        print(linehauls_roures, backhauls_routes)
+        linehaul_nodes = self.linehaul_nodes()
+        backhaul_nodes = self.backhaul_nodes()
+        linehauls = self.sweep_algorithm(linehaul_nodes)
+        backhauls = self.sweep_algorithm(backhaul_nodes)
+        while len(linehauls) < len(backhauls):
+            linehauls = [[0, linehauls[-1].pop()]] + linehauls
+        routes = linehauls + backhauls
+        print(routes)
+        # print results
+        print('capacity:', self.capacity)
+        print('clusters: ', routes)
+        distances = [self.route_distance(route) for route in routes]
+        print('distances: ', distances)
+        print('total distance: ', sum(distances))
+        print('demands', [self.route_demand(route) for route in routes])
         self.plot_graph(routes)
 
 
-    def create_routes(self, sorted_items):
+    def sweep_algorithm(self, nodes):
         """
-        Create routes from sorted items with capacity restrictions
+        Initial solution with a greedy algorithm
         """
-        total_distance, route, routes = 0, [], []
-        for item in sorted_items:
-            if total_distance + item[3] <= self.capacity:
-                route.append(item[0])
-                total_distance += item[3]
-            else:
-                routes.append(route)
-                total_distance, route = 0, []
-                route.append(item[0])
-                total_distance += item[3]
-        if total_distance > 0:
-            routes.append(route)
+        items, routes = [], []
+        # Get nodes polar coordinates and demand
+        for key in nodes.keys():
+            _, angle, = self.polar_coordinates(key)
+            items.append([key, angle])
+        # Create routes
+        sorted_items = sorted(items, key=lambda x: x[1])
+        clusters = self.create_clusters(sorted_items)
+        routes = self.create_routes(clusters)
         return routes
 
 
+    def create_clusters(self, sorted_nodes) -> list:
+        """
+        Create clusters from sorted nodes with capacity restrictions
+        """
+        demand, cluster, clusters = 0, [0], []
+        for node in sorted_nodes:
+            node_demand = self.nodes[node[0]]['demand']
+            if demand + node_demand > self.capacity:
+                clusters.append(cluster)
+                demand, cluster = 0, [0]
+            cluster.append(node[0])
+            demand += node_demand
+        if demand > 0:
+            clusters.append(cluster)
+        return clusters
+
+
+    def create_routes(self, clusters):
+        """
+        Create routes from clusters
+        """
+        routes = []
+        for cluster in clusters:
+            cluster_nodes = self.nodes_route(cluster)
+            cluster_edges = self.nodes_edges(cluster_nodes)
+            kruskal = Kruskal(cluster_edges)
+            spanning_tree = kruskal.minimum_spanning_tree()
+            preorder = kruskal.preorder(spanning_tree, 0)
+            routes.append(preorder)
+        return routes
 
 
 
