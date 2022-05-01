@@ -1,7 +1,8 @@
+from typing import List, Tuple
 
 class Kruskal:
 
-    def __init__(self, edges):
+    def __init__(self, edges: List[list]) -> None:
         """
         Initialize Kruskal
         """
@@ -12,34 +13,37 @@ class Kruskal:
             self.ranking.append(1)
 
 
-    def code_edges(self, edges):
+    def code_edges(self, edges: List[list]) -> Tuple[list, list]:
         """
-        Code the edges
+        Code the edges, from discontinuous list to continuous list starting at zero
         """
-        new_nodes = set()
+        old_nodes = set()
         new_edges = []
+        # get all nodes from edges and sort them
         for u,v,_ in edges:
-            new_nodes.add(u)
-            new_nodes.add(v)
-        new_nodes = list(new_nodes)
+            old_nodes.add(u)
+            old_nodes.add(v)
+        old_nodes = list(old_nodes)
+        # coded nodes by index position in the list
         for u,v,c in edges:
-            new_u = new_nodes.index(u)
-            new_v = new_nodes.index(v)
+            new_u = old_nodes.index(u)
+            new_v = old_nodes.index(v)
             new_edges.append([new_u, new_v, c])
-        return new_edges, new_nodes
+        # return the coded edges and original nodes
+        return new_edges, old_nodes
 
 
-    def decode_edges(self, edges):
+    def decode_edges(self, edges: List[list]) -> List[list]:
         """
         decode the edges
         """
-        new_edges = []
+        old_edges = []
         for u,v,c in edges:
-            new_edges.append([self.nodes[u], self.nodes[v], c])
-        return new_edges
+            old_edges.append([self.nodes[u], self.nodes[v], c])
+        return old_edges
 
 
-    def find(self, node):
+    def find(self, node: int) -> int:
         """
         find the root of the node
         """
@@ -50,24 +54,25 @@ class Kruskal:
         return root_node
 
 
-    def union(self, node1, node2):
+    def union(self, node_a: int, node_b: int) -> None:
         """
         union two nodes
         """
-        root_node1 = self.find(node1)
-        root_node2 = self.find(node2)
-        if self.ranking[root_node1] > self.ranking[root_node2]:
-            self.partition[root_node2] = root_node1
+        root_a = self.find(node_a)
+        root_b = self.find(node_b)
+        if self.ranking[root_a] > self.ranking[root_b]:
+            self.partition[root_b] = root_a
         else:
-            self.partition[root_node1] = root_node2
-            if self.ranking[root_node1] == self.ranking[root_node2]:
-                self.ranking[root_node2] += 1
+            self.partition[root_a] = root_b
+            if self.ranking[root_a] == self.ranking[root_b]:
+                self.ranking[root_b] += 1
 
 
-    def minimum_spanning_tree(self):
+    def minimum_spanning_tree(self) -> List[list]:
         """
         returns the minimum spanning tree
         """
+        # sort the edges by cost
         edges = sorted(self.edges, key=lambda x: x[2])
         for u,v,c in edges:
             if self.find(u) != self.find(v):
@@ -76,29 +81,31 @@ class Kruskal:
         return self.decode_edges(self.mst)
 
 
-    def preorder(self, edges, root):
+    def preorder(self, mst: List[list], root: int) -> List[int]:
         """
         get tree preorder path
         """
         path = [root]
-        remainder = edges.copy()
+        remainder = mst.copy()
+        # iterate until all edges in mst are used
         while len(remainder) > 0:
-            index, items = 0, []
-            [items.extend(item) for item in remainder]
-            items = set(items)
+            # search back to front in the preorder path
+            i, remainder_nodes = -1, []
+            [remainder_nodes.extend([u, v]) for v, u, _ in remainder]
+            remainder_nodes = set(remainder_nodes)
             while True:
-                index -= 1
-                search = path[index]
-                if search in items:
-                    for x, y, c in remainder:
-                        if x == search:
-                            path.append(y)
-                            remainder.remove([x,y,c])
+                searched_node = path[i]
+                if searched_node in remainder_nodes:
+                    for node_a, node_b, c in remainder:
+                        if node_a == searched_node:
+                            path.append(node_b)
+                            remainder.remove([node_a,node_b,c])
                             break
-                        if y == search:
-                            path.append(x)
-                            remainder.remove([x,y,c])
+                        if node_b == searched_node:
+                            path.append(node_a)
+                            remainder.remove([node_a,node_b,c])
                             break
                     break
+                i -= 1
         return path
 

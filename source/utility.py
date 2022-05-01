@@ -2,7 +2,7 @@ import math
 
 class Utility:
 
-    def read_input(self, input_path):
+    def read_input(self, input_path: str) -> str:
         """
         Read the input file
         """
@@ -14,14 +14,14 @@ class Utility:
             exit(1)
 
 
-    def process_input(self, text):
+    def process_input(self, text: str) -> dict:
         """
         Process the input file and return an info dictionary
         """
         nodes = {}
         capacity = 0
         try:
-            for line in str(text).split('\n'):
+            for line in text.split('\n'):
                 if ':' not in line:
                     items = line.split()
                     if len(items) == 2:
@@ -34,9 +34,9 @@ class Utility:
                         key = int(items[0]) - 1
                         if nodes.get(key):
                             nodes[key]['coordinates'] = (int(items[1]), int(items[2]))
-                            nodes[key]['type_node'] = items[3]
+                            nodes[key]['node_type'] = items[3]
                         else:
-                            nodes[key] = {'coordinates': (int(items[1]), int(items[2])), 'type_node': items[3]}
+                            nodes[key] = {'coordinates': (int(items[1]), int(items[2])), 'node_type': items[3]}
                 else:
                     key, value = line.split(':')
                     if key.strip() == 'CAPACITY':
