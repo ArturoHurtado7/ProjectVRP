@@ -72,7 +72,7 @@ class Graph():
         Get linehaul nodes
         """
         return self.type_nodes('L', nodes)
-    
+
 
     def backhaul_nodes(self, nodes: dict) -> dict:
         """
@@ -209,7 +209,7 @@ class Graph():
                 distance_rows.append(self.distance[i][j])
             distance_matrix.append(distance_rows)
         return distance_matrix
-    
+
 
     def optimal_assignment(self, distance_matrix):
         recursive, _ = self.recursive_assignment(distance_matrix, 0, [])
@@ -302,6 +302,9 @@ class Graph():
         return routes
 
 
+    #--------------------------------------------------------------------------
+    # Principal function
+    #--------------------------------------------------------------------------
     def mt_vrpb(self) -> List[list]:
         """
         The Multiple Trip Vehicle Routing Problem with Backhauls
@@ -309,21 +312,21 @@ class Graph():
         complete_routes = self.initial_solution()
         old_routes = [linehauls + backhauls for linehauls, backhauls in complete_routes]
 
-
-        i = 0
         new_complete_routes = complete_routes.copy()
-        last_change = 0
-        while i < 1000:
+        last_change, i = [], 0
+        while i < 10000:
             new_complete_routes, change = self.variable_neighborhood_search(new_complete_routes, self.swap_intra_route)
-            if change: last_change = i
+            if change: last_change.append([i, 'swap_intra_route'])
             new_complete_routes, change = self.variable_neighborhood_search(new_complete_routes, self.insertion_intra_route)
-            if change: last_change = i
+            if change: last_change.append([i, 'insertion_intra_route'])
+            new_complete_routes, change = self.variable_neighborhood_search(new_complete_routes, self.reverse_intra_route)
+            if change: last_change.append([i, 'reverse_intra_route'])
             new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.insertion_inter_route)
-            if change: last_change = i
+            if change: last_change.append([i, 'insertion_inter_route'])
             new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.swap_one_pair)
-            if change: last_change = i
+            if change: last_change.append([i, 'swap_one_pair'])
             new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.swap_two_pairs)
-            if change: last_change = i
+            if change: last_change.append([i, 'swap_two_pairs'])
             i += 1
         print(' ********* last_change:', last_change)
         routes = [linehauls + backhauls for linehauls, backhauls in new_complete_routes]
@@ -391,8 +394,7 @@ class Graph():
         taking account of the delivery customers must be served before any pickups
         """
         new_route = [x[:] for x in route]
-        types = randint(0, 1) # 0: linehaul, 1: backhaul
-        i = 0
+        types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
         while i < 2:
             ranges = self.route_ranges(new_route[types], types)
             choices = new_route[types][ranges[0]:ranges[1]]
@@ -415,8 +417,7 @@ class Graph():
         Insertion heuristic
         """
         new_route = [x[:] for x in route]
-        types = randint(0, 1) # 0: linehaul, 1: backhaul
-        i = 0
+        types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
         while i < 2:
             ranges = self.route_ranges(new_route[types], types)
             choices = new_route[types][ranges[0]:ranges[1]]
@@ -434,13 +435,28 @@ class Graph():
         return new_route
 
 
+    def reverse_intra_route(self, route: List[list]) -> list:
+        """
+        Reverse heuristic
+        """
+        new_route = [x[:] for x in route]
+        types = randint(0, 1)
+        ranges = self.route_ranges(new_route[types], types)
+        route_part = new_route[types][ranges[0]:ranges[1]]
+        route_part.reverse()
+        if types == 0:
+            new_route[types] = [new_route[types][0]] + route_part
+        else:
+            new_route[types] = route_part + [new_route[types][-1]]
+        return new_route
+
+
     def insertion_inter_route(self, route_a: List[int], route_b: List[int]) -> Tuple[list, list]:
         """
         insert a customer from route_b into route_a
         """
         new_route_a, new_route_b = [x[:] for x in route_a], [y[:] for y in route_b]
-        types = randint(0, 1) # 0: linehaul, 1: backhaul
-        i = 0
+        types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
         while i < 2:
             ranges_a = self.route_ranges(new_route_a[types], types)
             ranges_b = self.route_ranges(new_route_b[types], types)
@@ -449,7 +465,7 @@ class Graph():
                 node_a = choice(choices)
                 index_b = randint(ranges_b[0], ranges_b[1])
                 route_demand = self.route_demand(new_route_b[types]) + self.nodes[node_a].get('demand') 
-                if route_demand < self.capacity and node_a != 0:
+                if route_demand < self.capacity:
                     new_route_b[types].insert(index_b, node_a)
                     new_route_a[types].remove(node_a)
                     break
@@ -463,8 +479,7 @@ class Graph():
         swap a customer from route_a to route_b and vice versa
         """
         new_route_a, new_route_b = [x[:] for x in route_a], [y[:] for y in route_b]
-        types = randint(0, 1) # 0: linehaul, 1: backhaul
-        i = 0
+        types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
         while i < 2:
             ranges_a, ranges_b = self.route_ranges(new_route_a[types], types), self.route_ranges(new_route_b[types], types)
             choices_a, choices_b = new_route_a[types][ranges_a[0]:ranges_a[1]], new_route_b[types][ranges_b[0]:ranges_b[1]]
@@ -486,8 +501,7 @@ class Graph():
         swap two customers from route_a to route_b and vice versa
         """
         new_route_a, new_route_b = [x[:] for x in route_a], [y[:] for y in route_b]
-        types = randint(0, 1) # 0: linehaul, 1: backhaul
-        i = 0
+        types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
         while i < 2:
             ranges_a = self.route_ranges(new_route_a[types], types)
             ranges_b = self.route_ranges(new_route_b[types], types)
@@ -510,15 +524,16 @@ class Graph():
         return new_route_a, new_route_b
 
 
-    def shift_none_pair(self, route: List[int]) -> List[int]:
+    def shift_pair(self, route_a: List[int], route_b: List[int]) -> List[int]:
         """
-        
+        shift a customer from route to the next route
         """
-        pass
+        return route_a, route_b
 
 
-    def swap_single_pair(self, route: List[int]) -> List[int]:
+    def swap_single_pair(self, route_a: List[int], route_b: List[int]) -> List[int]:
         """
-        
+        swap a customer to a couple of customes from route to another route
         """
-        pass
+        return route_a, route_b
+
