@@ -327,6 +327,10 @@ class Graph():
             if change: last_change.append([i, 'swap_one_pair'])
             new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.swap_two_pairs)
             if change: last_change.append([i, 'swap_two_pairs'])
+            new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.shift_pair)
+            if change: last_change.append([i, 'shift_pair'])
+            new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.swap_single_pair)
+            if change: last_change.append([i, 'swap_single_pair'])
             i += 1
         print(' ********* last_change:', last_change)
         routes = [linehauls + backhauls for linehauls, backhauls in new_complete_routes]
@@ -345,6 +349,14 @@ class Graph():
         print('total distance: ', sum([self.route_distance(route) for route in routes]))
         self.plot_graph(routes)
         return routes
+
+
+    def local_search_optimizer(self, complete_routes: List[list]) -> List[list]:
+        """
+        The multi-layer local search optimiser framework
+        """
+
+        return complete_routes
 
 
     def variable_neighborhood_search(self, routes: List[list], function: Function) -> list:
@@ -498,23 +510,33 @@ class Graph():
 
     def swap_two_pairs(self, route_a: List[int], route_b: List[int]) -> Tuple[list, list]:
         """
-        swap two customers from route_a to route_b and vice versa
+        swaps two pairs of consecutive customers taken from two separate routes
         """
-        new_route_a, new_route_b = [x[:] for x in route_a], [y[:] for y in route_b]
+        new_route_a = [x[:] for x in route_a]
+        new_route_b = [y[:] for y in route_b]
         types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
         while i < 2:
             ranges_a = self.route_ranges(new_route_a[types], types)
             ranges_b = self.route_ranges(new_route_b[types], types)
-            choices_a, choices_b = new_route_a[types][ranges_a[0]:ranges_a[1]], new_route_b[types][ranges_b[0]:ranges_b[1]]
+            choices_a = new_route_a[types][ranges_a[0]:ranges_a[1]-1]
+            choices_b = new_route_b[types][ranges_b[0]:ranges_b[1]-1]
             if len(choices_a) > 2 and len(choices_b) > 2:
-                node_a1, node_a2 = sample(choices_a, k=2)
-                node_b1, node_b2 = sample(choices_b, k=2)
-                index_a1, index_a2 = new_route_a[types].index(node_a1), new_route_a[types].index(node_a2)
-                index_b1, index_b2 = new_route_b[types].index(node_b1), new_route_b[types].index(node_b2)
+                # select two consecutive customers from route_a
+                node_a1 = choice(choices_a)
+                index_a1 = new_route_a[types].index(node_a1)
+                index_a2 = index_a1 + 1
+                node_a2 = new_route_a[types][index_a2]
+                # select two consecutive customers from route_b
+                node_b1 = choice(choices_b)
+                index_b1 = new_route_b[types].index(node_b1)
+                index_b2 = index_b1 + 1
+                node_b2 = new_route_b[types][index_b2]
+                # validate swap with demand constraints
                 nodes_demand_a = self.nodes[node_a1].get('demand') + self.nodes[node_a2].get('demand')
                 nodes_demand_b = self.nodes[node_b1].get('demand') + self.nodes[node_b2].get('demand')
                 route_demand_a = self.route_demand(new_route_a[types]) - nodes_demand_a + nodes_demand_b
                 route_demand_b = self.route_demand(new_route_b[types]) - nodes_demand_b + nodes_demand_a
+                # swap two consecutive customers
                 if route_demand_a < self.capacity and route_demand_b < self.capacity:
                     new_route_a[types][index_a1], new_route_a[types][index_a2] = node_b1, node_b2
                     new_route_b[types][index_b1], new_route_b[types][index_b2] = node_a1, node_a2
@@ -526,14 +548,73 @@ class Graph():
 
     def shift_pair(self, route_a: List[int], route_b: List[int]) -> List[int]:
         """
-        shift a customer from route to the next route
+        re-locates two consecutive customers from one route to another
         """
-        return route_a, route_b
+        new_route_a = [x[:] for x in route_a]
+        new_route_b = [y[:] for y in route_b]
+        types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
+        while i < 2:
+            ranges_a = self.route_ranges(new_route_a[types], types)
+            ranges_b = self.route_ranges(new_route_b[types], types)
+            choices_a = new_route_a[types][ranges_a[0]:ranges_a[1]-1]
+            if len(choices_a) > 2:
+                # select two consecutive customers from route_a
+                node_a1 = choice(choices_a)
+                index_a1 = new_route_a[types].index(node_a1)
+                index_a2 = index_a1 + 1
+                node_a2 = new_route_a[types][index_a2]
+                # validate swap with demand constraint
+                nodes_demand_a = self.nodes[node_a1].get('demand') + self.nodes[node_a2].get('demand')
+                route_demand_b = self.route_demand(new_route_b[types]) + nodes_demand_a
+                # swap two consecutive customers
+                if route_demand_b < self.capacity:
+                    index_b = randint(ranges_b[0],ranges_b[1])
+                    new_route_b[types].insert(index_b, node_a2)
+                    new_route_b[types].insert(index_b, node_a1)
+                    new_route_a[types].remove(node_a1)
+                    new_route_a[types].remove(node_a2)
+                    break
+            types = abs(types - 1)
+            i += 1
+        return new_route_a, new_route_b
 
 
     def swap_single_pair(self, route_a: List[int], route_b: List[int]) -> List[int]:
         """
         swap a customer to a couple of customes from route to another route
         """
-        return route_a, route_b
+        new_route_a = [x[:] for x in route_a]
+        new_route_b = [y[:] for y in route_b]
+        types, i = randint(0, 1), 0 # 0: linehaul, 1: backhaul
+        while i < 2:
+            ranges_a = self.route_ranges(new_route_a[types], types)
+            ranges_b = self.route_ranges(new_route_b[types], types)
+            choices_a = new_route_a[types][ranges_a[0]:ranges_a[1]-1]
+            choices_b = new_route_b[types][ranges_b[0]:ranges_b[1]]
+            if len(choices_a) > 2 and len(choices_b) > 1:
+                # select two consecutive customers from route_a
+                node_a1 = choice(choices_a)
+                index_a1 = new_route_a[types].index(node_a1)
+                index_a2 = index_a1 + 1
+                node_a2 = new_route_a[types][index_a2]
+                # select one customer from route_b
+                node_b = choice(choices_b)
+                index_b = new_route_b[types].index(node_b)
+                # validate swap with demand constraint
+                nodes_demand_a = self.nodes[node_a1].get('demand') + self.nodes[node_a2].get('demand')
+                nodes_demand_b = self.nodes[node_b].get('demand')
+                route_demand_a = self.route_demand(new_route_a[types]) + nodes_demand_b - nodes_demand_a
+                route_demand_b = self.route_demand(new_route_b[types]) + nodes_demand_a - nodes_demand_b
+                # swap two consecutive customers
+                if route_demand_b < self.capacity and route_demand_a < self.capacity:
+                    new_route_b[types].insert(index_b, node_a2)
+                    new_route_b[types].insert(index_b, node_a1)
+                    new_route_a[types].insert(index_a1, node_b)
+                    new_route_b[types].remove(node_b)
+                    new_route_a[types].remove(node_a1)
+                    new_route_a[types].remove(node_a2)
+                    break
+            types = abs(types - 1)
+            i += 1
+        return new_route_a, new_route_b
 
