@@ -312,28 +312,26 @@ class Graph():
         complete_routes = self.initial_solution()
         old_routes = [linehauls + backhauls for linehauls, backhauls in complete_routes]
 
-        new_complete_routes = complete_routes.copy()
-        last_change, i = [], 0
-        while i < 10000:
-            new_complete_routes, change = self.variable_neighborhood_search(new_complete_routes, self.swap_intra_route)
-            if change: last_change.append([i, 'swap_intra_route'])
-            new_complete_routes, change = self.variable_neighborhood_search(new_complete_routes, self.insertion_intra_route)
-            if change: last_change.append([i, 'insertion_intra_route'])
-            new_complete_routes, change = self.variable_neighborhood_search(new_complete_routes, self.reverse_intra_route)
-            if change: last_change.append([i, 'reverse_intra_route'])
-            new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.insertion_inter_route)
-            if change: last_change.append([i, 'insertion_inter_route'])
-            new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.swap_one_pair)
-            if change: last_change.append([i, 'swap_one_pair'])
-            new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.swap_two_pairs)
-            if change: last_change.append([i, 'swap_two_pairs'])
-            new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.shift_pair)
-            if change: last_change.append([i, 'shift_pair'])
-            new_complete_routes, change = self.multiple_neighborhood_search(new_complete_routes, self.swap_single_pair)
-            if change: last_change.append([i, 'swap_single_pair'])
-            i += 1
-        print(' ********* last_change:', last_change)
-        routes = [linehauls + backhauls for linehauls, backhauls in new_complete_routes]
+        in_limit, out_limit = 100 , 50
+        new_distance, best_distance = 0, 0
+        new_complete_routes, best_complete_routes = [], []
+        for i in range(out_limit):
+            new_complete_routes = complete_routes.copy()
+            for j in range(in_limit):
+                new_complete_routes = self.framework_optimizer(new_complete_routes)
+            routes = [linehauls + backhauls for linehauls, backhauls in new_complete_routes]
+            new_distance = sum([self.route_distance(route) for route in routes])
+            if new_distance < best_distance or best_distance == 0:
+                print(f'New distance: {new_distance} at {i}, {j}')
+                best_distance = new_distance
+                best_complete_routes = new_complete_routes
+
+        #best_complete_routes = [[[0, 9, 7, 5], [2, 1, 6, 0]], [[0, 12, 15, 18, 21], [19, 20, 17, 0]], [[0, 10, 8, 3], [4, 11, 13, 0]], [[0, 14], [16, 0]]]
+        #374.5077747374245
+        routes = [linehauls + backhauls for linehauls, backhauls in best_complete_routes]
+        #375.3044602493867
+        #375.2797871480125
+        #routes = [[0, 9, 7, 5, 2, 1, 6, 0], [0, 14, 21, 19, 16, 0], [0, 10, 8, 3, 4, 11, 13, 0], [0, 12, 15, 18, 20, 17, 0]]
 
 
         #print('capacity:', self.capacity)
@@ -343,7 +341,7 @@ class Graph():
         print('old_routes: ', old_routes)
         print('total distance: ', sum([self.route_distance(route) for route in old_routes]))
         self.plot_graph(old_routes)
-        print('new_complete_routes: ', new_complete_routes)
+        print('best_complete_routes: ', best_complete_routes)
         print('complete_routes: ', complete_routes)
         print('new_routes: ', routes)
         print('total distance: ', sum([self.route_distance(route) for route in routes]))
@@ -351,11 +349,51 @@ class Graph():
         return routes
 
 
-    def local_search_optimizer(self, complete_routes: List[list]) -> List[list]:
+    def framework_optimizer(self, complete_routes: List[list]) -> List[list]:
         """
-        The multi-layer local search optimiser framework
+        Local search optimiser framework
         """
-
+        complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+        complete_routes, change = self.variable_neighborhood_search(complete_routes, self.swap_intra_route)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.variable_neighborhood_search(complete_routes, self.reverse_intra_route)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.multiple_neighborhood_search(complete_routes, self.insertion_inter_route)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.multiple_neighborhood_search(complete_routes, self.swap_one_pair)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.multiple_neighborhood_search(complete_routes, self.swap_two_pairs)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.multiple_neighborhood_search(complete_routes, self.shift_pair)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.multiple_neighborhood_search(complete_routes, self.swap_single_pair)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.multiple_neighborhood_search(complete_routes, self.swap_backhauls)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.variable_neighborhood_divide(complete_routes, self.divide_route)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
+        complete_routes, change = self.multiple_neighborhood_search(complete_routes, self.shift_continuos_pair)
+        if change: 
+            complete_routes, change = self.variable_neighborhood_search(complete_routes, self.insertion_intra_route)
+            complete_routes = self.framework_optimizer(complete_routes)
         return complete_routes
 
 
@@ -371,6 +409,23 @@ class Graph():
         if distance_after < distance_before:
             routes[i] = new_route
             change = True
+        return routes, change
+
+
+    def variable_neighborhood_divide(self, routes: List[list], function: Function) -> list:
+        """
+        Variable neighborhood divide route algorithm call
+        """
+        change = False
+        i = randint(0, len(routes) - 1) # pick a random route
+        distance_before = self.complete_route_distance(routes[i])
+        first_route, second_route = function(routes[i])
+        if second_route:
+            distance_after = self.complete_route_distance(first_route) + self.complete_route_distance(second_route)
+            if distance_after < distance_before:
+                routes[i] = first_route
+                routes.append(second_route)
+                change = True
         return routes, change
 
 
@@ -616,5 +671,47 @@ class Graph():
                     break
             types = abs(types - 1)
             i += 1
+        return new_route_a, new_route_b
+
+
+    def swap_backhauls(self, route_a: List[int], route_b: List[int]) -> List[int]:
+        """
+        interchange the backhauls of two routes
+        """
+        new_route_a, new_route_b = [x[:] for x in route_a], [y[:] for y in route_b]
+        new_route_a[1], new_route_b[1] = new_route_b[1], new_route_a[1]
+        return new_route_a, new_route_b
+
+
+    def divide_route(self, route: List[list]) -> list:
+        """
+        Divide a route into two routes
+        """
+        first_route = [x[:] for x in route]
+        second_route = []
+        if len(first_route[0]) > 2 and len(first_route[1]) > 2:
+            second_route = [[0, first_route[0].pop(1)], [first_route[1].pop(-2), 0]]
+        return first_route, second_route
+
+
+    def shift_continuos_pair(self, route_a: List[int], route_b: List[int]) -> List[int]:
+        """
+        Create a new route by shifting two consecutive customers, one from backhauls and another to linehauls
+        """
+        new_route_a = [x[:] for x in route_a]
+        new_route_b = [y[:] for y in route_b]
+        # get the first and last nodes's demands of route_a
+        if len(new_route_a[0]) > 2 and len(new_route_a[1]) > 1:
+            node_demand_linehaul = self.nodes[new_route_a[0][-1]].get('demand')
+            node_demand_backhaul = self.nodes[new_route_a[1][0]].get('demand')
+            route_demand_linehaul = self.route_demand(new_route_b[0]) + node_demand_linehaul
+            route_demand_backhaul = self.route_demand(new_route_b[1]) + node_demand_backhaul
+            # validate swap with demand constraint
+            if route_demand_linehaul < self.capacity and route_demand_backhaul < self.capacity:
+                node_linehaul_a = new_route_a[0].pop(-1)
+                node_backhaul_a = new_route_a[1].pop(0)
+                new_route_b[0].insert(len(new_route_b[0]), node_linehaul_a)
+                new_route_b[1].insert(0, node_backhaul_a)
+            # return the new routes
         return new_route_a, new_route_b
 
