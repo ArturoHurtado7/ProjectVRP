@@ -4,6 +4,7 @@
 from utility import Utility
 from graph import Graph
 
+
 def main() -> None:
     utility = Utility()
     input = utility.read_input('./data/eil22_50_2.vrp')

@@ -1,9 +1,8 @@
 import math
-from pyclbr import Function
 from random import choice, randint, sample
 from matplotlib import pyplot as plt
 from kruskal import Kruskal
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 class Graph():
 
@@ -168,7 +167,9 @@ class Graph():
             plt.plot(x_route, y_route, 'b')
         plt.show()
 
-
+    #--------------------------------------------------------------------------
+    # Initial Solution Methods
+    #--------------------------------------------------------------------------
     def initial_solution(self):
         """
         Initial solution with a greedy algorithm
@@ -397,7 +398,7 @@ class Graph():
         return complete_routes
 
 
-    def variable_neighborhood_search(self, routes: List[list], function: Function) -> list:
+    def variable_neighborhood_search(self, routes: List[list], function: Callable) -> list:
         """
         Variable neighborhood search algorithm call
         """
@@ -412,7 +413,7 @@ class Graph():
         return routes, change
 
 
-    def variable_neighborhood_divide(self, routes: List[list], function: Function) -> list:
+    def variable_neighborhood_divide(self, routes: List[list], function: Callable) -> list:
         """
         Variable neighborhood divide route algorithm call
         """
@@ -429,7 +430,7 @@ class Graph():
         return routes, change
 
 
-    def multiple_neighborhood_search(self, routes: List[list], function: Function) -> list:
+    def multiple_neighborhood_search(self, routes: List[list], function: Callable) -> list:
         """
         Multiple route neighborhood search algorithm call
         """
