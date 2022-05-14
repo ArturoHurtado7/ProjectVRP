@@ -366,7 +366,7 @@ class Graph():
         complete_routes = self.initial_solution()
         old_routes = [linehauls + backhauls for linehauls, backhauls in complete_routes]
 
-        in_limit, out_limit = 400, 100
+        in_limit, out_limit = 800, 400
         new_distance, best_distance = 0, 0
         new_complete_routes, best_complete_routes = [], []
         for i in range(out_limit):
@@ -391,22 +391,24 @@ class Graph():
         #print('complete_routes: ', complete_routes)
         #print('old_routes: ', old_routes)
         #print('total distance: ', sum([self.route_distance(route) for route in old_routes]))
-        self.plot_graph(old_routes)
-        #print('best_complete_routes: ', best_complete_routes)
-        print('complete_routes: ', complete_routes)
-        #print('new_routes: ', routes)
-        #print('total distance: ', sum([self.route_distance(route) for route in routes]))
+        #self.plot_graph(old_routes)
+        print('best_complete_routes: ', best_complete_routes)
+        routes = [linehauls + backhauls for linehauls, backhauls in best_complete_routes]
+        #print('complete_routes: ', complete_routes)
+        print('new_routes: ', routes)
+        print('total distance: ', sum([self.route_distance(route) for route in routes]))
+        print('************************************************************************************')
         self.plot_graph(routes, 'mt_vrpb')
 
-        complete_routes = [[[0, 3, 11], [13, 19, 16, 0]], [[0, 8, 6, 1, 2, 5, 7], [18, 0]]]
-        old_routes = [linehauls + backhauls for linehauls, backhauls in complete_routes]
-        print('total distance: ', sum([self.route_distance(route) for route in old_routes]))
+        #complete_routes = [[[0, 11, 3, 8], [13, 19, 16, 0]], [[0, 6, 1, 2, 5, 7], [18, 0]]]
+        #old_routes = [linehauls + backhauls for linehauls, backhauls in complete_routes]
+        #print('total distance: ', sum([self.route_distance(route) for route in old_routes]))
 
-        best_complete_routes = [[[0, 11], [13, 19, 16, 0]], [[0, 3, 8, 6, 1, 2, 5, 7], [18, 0]]]
-        routes = [linehauls + backhauls for linehauls, backhauls in best_complete_routes]
-        print('total distance: ', sum([self.route_distance(route) for route in routes]))
+        #best_complete_routes = [[[0, 8, 3, 11], [13, 19, 16, 0]], [[0, 6, 1, 2, 5, 7], [18, 0]]]
+        #routes = [linehauls + backhauls for linehauls, backhauls in best_complete_routes]
+        #print('total distance: ', sum([self.route_distance(route) for route in routes]))
 
-        self.plot_graph2(old_routes, routes, '1-insertion')
+        #self.plot_graph2(old_routes, routes, '1-insertion')
 
         return routes
 
